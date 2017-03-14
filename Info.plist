@@ -10,5 +10,7 @@
 	<string>presto</string>
 	<key>isDashDocset</key>
 	<true/>
+	<key>DashDocSetFallbackURL</key>
+	<string>https://prestodb.io/docs/current/</string>
 </dict>
 </plist>
