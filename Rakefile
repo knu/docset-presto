@@ -170,4 +170,9 @@ task :archive do
   sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET
 end
 
+desc 'Delete all fetched files and generated files'
+task :clean do
+  rm_rf [DOCS_DIR, ICON_FILE, DOCSET, DOCSET_ARCHIVE]
+end
+
 task :default => :build
