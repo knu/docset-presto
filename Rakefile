@@ -2,6 +2,7 @@
 require 'bundler/setup'
 Bundler.require
 
+require 'json'
 require 'pathname'
 require 'uri'
 
@@ -25,6 +26,10 @@ end
 def between_texts?(node, prev_pattern, next_pattern)
   !!(text_node_match(node.previous, prev_pattern) &&
      text_node_match(node.next, next_pattern))
+end
+
+def extract_version(doc)
+  doc.title[/Presto ([\d.]+)/, 1]
 end
 
 DOCSET = 'Presto.docset'
@@ -105,7 +110,7 @@ task :build => :fetch do |t|
 
       case path
       when 'index.html'
-        puts "Generating docset for Presto #{doc.title[/Presto ([\d.]+)/, 1]}"
+        puts "Generating docset for Presto #{extract_version(doc)}"
       when %r{\Afunctions/}
         if section = doc.at('h1 + .section[id]')
           add_operators.(section)
@@ -170,9 +175,38 @@ task :build => :fetch do |t|
   }
 end
 
-desc 'Archive the generated docset into a tarball'
-task :archive do
-  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET
+task :prepare, [:workdir] do |t, args|
+  version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
+  workdir = Pathname(args[:workdir] || '../Dash-User-Contributions') / 'docsets/Presto'
+
+  docset_json = workdir / 'docset.json'
+  archive = workdir / DOCSET_ARCHIVE
+  versioned_archive = workdir / 'versions' / version / DOCSET_ARCHIVE
+
+  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET and
+    mv DOCSET_ARCHIVE, archive and
+    mkdir_p versioned_archive.dirname and
+    cp archive, versioned_archive
+
+  puts "Updating #{docset_json}"
+  File.open(docset_json, 'r+') { |f|
+    json = JSON.parse(f.read)
+    json['version'] = version
+    specific_version = {
+      'version' => version,
+      'archive' => versioned_archive.relative_path_from(workdir).to_s
+    }
+    json['specific_versions'] = [specific_version] | json['specific_versions']
+    f.rewind
+    f.write JSON.pretty_generate(json, indent: "    ")
+    f.truncate(f.tell)
+  }
+
+  Dir.chdir(workdir.to_s) {
+    sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
+      path.relative_path_from(workdir).to_s
+    }
+  }
 end
 
 desc 'Delete all fetched files and generated files'
