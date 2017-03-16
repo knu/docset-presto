@@ -103,6 +103,8 @@ task :build => :fetch do |t|
       end
 
       case path
+      when 'index.html'
+        puts "Generating docset for Presto #{doc.title[/Presto ([\d.]+)/, 1]}"
       when %r{\Afunctions/}
         if section = doc.at('h1 + .section[id]')
           add_operators.(section)
