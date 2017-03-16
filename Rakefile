@@ -33,16 +33,18 @@ DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_FILE = Pathname('icon.png')
 
-desc 'Fetch the Presto document zip file.'
-task :fetch do |t|
-  unless DOCS_DIR.directory?
-    puts 'Downloading %s' % DOCS_URI
-    system 'wget', '-nv', '-o', 'wget.log', '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s
-  end
+desc 'Fetch the Presto document files.'
+task :fetch => [DOCS_DIR, ICON_FILE]
 
-  unless ICON_FILE.file?
-    system 'wget', '-nv', '-o', 'wget.log', '-O', ICON_FILE.to_s, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64'
-  end
+file DOCS_DIR do |t|
+  puts 'Downloading %s' % DOCS_URI
+  system 'wget', '-nv', '-o', 'wget.log', '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s or
+    fail 'Failed to fetch the document files.'
+end
+
+file ICON_FILE do |t|
+  system 'wget', '-nv', '-o', 'wget.log', '-O', ICON_FILE.to_s, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64' or
+    fail 'Failed to fetch the icon file.'
 end
 
 desc 'Build a docset in the current directory.'
