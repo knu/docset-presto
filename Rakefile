@@ -32,18 +32,19 @@ DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
 DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_FILE = Pathname('icon.png')
+FETCH_LOG = 'wget.log'
 
 desc 'Fetch the Presto document files.'
 task :fetch => [DOCS_DIR, ICON_FILE]
 
 file DOCS_DIR do |t|
   puts 'Downloading %s' % DOCS_URI
-  system 'wget', '-nv', '-o', 'wget.log', '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s or
+  system 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s or
     fail 'Failed to fetch the document files.'
 end
 
 file ICON_FILE do |t|
-  system 'wget', '-nv', '-o', 'wget.log', '-O', ICON_FILE.to_s, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64' or
+  system 'wget', '-nv', '--append-output', FETCH_LOG, '-O', ICON_FILE.to_s, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64' or
     fail 'Failed to fetch the icon file.'
 end
 
@@ -176,7 +177,7 @@ end
 
 desc 'Delete all fetched files and generated files'
 task :clean do
-  rm_rf [DOCS_DIR, ICON_FILE, DOCSET, DOCSET_ARCHIVE]
+  rm_rf [DOCS_DIR, ICON_FILE, DOCSET, DOCSET_ARCHIVE, FETCH_LOG]
 end
 
 task :default => :build
