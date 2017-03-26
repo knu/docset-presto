@@ -198,7 +198,7 @@ task :prepare, [:workdir] do |t, args|
     }
     json['specific_versions'] = [specific_version] | json['specific_versions']
     f.rewind
-    f.write JSON.pretty_generate(json, indent: "    ")
+    f.puts JSON.pretty_generate(json, indent: "    ")
     f.truncate(f.tell)
   }
 
