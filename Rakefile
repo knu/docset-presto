@@ -44,13 +44,11 @@ task :fetch => [DOCS_DIR, ICON_FILE]
 
 file DOCS_DIR do |t|
   puts 'Downloading %s' % DOCS_URI
-  system 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s or
-    fail 'Failed to fetch the document files.'
+  sh 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s
 end
 
 file ICON_FILE do |t|
-  system 'wget', '-nv', '--append-output', FETCH_LOG, '-O', ICON_FILE.to_s, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64' or
-    fail 'Failed to fetch the icon file.'
+  sh 'wget', '-nv', '--append-output', FETCH_LOG, '-O', t.name, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64'
 end
 
 desc 'Build a docset in the current directory.'
