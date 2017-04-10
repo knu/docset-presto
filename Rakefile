@@ -192,6 +192,13 @@ task :prepare, [:workdir] do |t, args|
   archive = workdir / DOCSET_ARCHIVE
   versioned_archive = workdir / 'versions' / version / DOCSET_ARCHIVE
 
+  puts "Resetting the working directory"
+  Dir.chdir(workdir.to_s) {
+    sh 'git', 'remote', 'update'
+    sh 'git', 'checkout', 'presto'
+    sh 'git', 'reset', '--hard', 'upstream/master'
+  }
+
   sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET and
     mv DOCSET_ARCHIVE, archive and
     mkdir_p versioned_archive.dirname and
