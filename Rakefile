@@ -67,8 +67,18 @@ task :build => :fetch do |t|
     INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, ?, ?);
   SQL
 
+  anchor_section = ->(path, node, name) {
+    type = 'Section'.freeze
+    a = Nokogiri::XML::Node.new('a', node.document)
+    a['name'] = id = '//apple_ref/cpp/%s/%s' % [type, name].map { |s|
+      URI.encode_www_form_component(s).gsub('+', '%20')
+    }
+    a['class'] = 'dashAnchor'
+    node.prepend_child(a)
+    # p [path, node.name, name]
+  }
+
   index_item = ->(path, node, type, name) {
-    # node.at_xpath('(./ancestor::*[@id][1] | ./preceding::*[@id][1] | ./self::*[@id])[last()]')
     if node
       a = Nokogiri::XML::Node.new('a', node.document)
       a['name'] = id = '//apple_ref/cpp/%s/%s' % [type, name].map { |s|
@@ -108,6 +118,9 @@ task :build => :fetch do |t|
           index_item.(path, h1, 'Section', title)
         end
       end
+      doc.css('.content h2, .content h3').each { |h|
+        anchor_section.(path, h, h.text)
+      }
 
       case path
       when 'index.html'
