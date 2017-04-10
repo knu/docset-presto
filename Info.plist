@@ -12,5 +12,7 @@
 	<true/>
 	<key>DashDocSetFallbackURL</key>
 	<string>https://prestodb.io/docs/current/</string>
+	<key>DashDocSetFamily</key>
+	<string>dashtoc</string>
 </dict>
 </plist>
