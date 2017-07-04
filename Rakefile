@@ -28,6 +28,8 @@ DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
+DUC_WORKTREE = 'Dash-User-Contributions'
+DUC_BRANCH = 'presto'
 
 desc 'Fetch the Presto document files.'
 task :fetch => [DOCS_DIR, ICON_FILE]
@@ -184,9 +186,13 @@ task :build => :fetch do |t|
   }
 end
 
-task :prepare, [:workdir] do |t, args|
+file DUC_WORKTREE do |t|
+  sh 'env', 'GIT_DIR=../Dash-User-Contributions/.git', 'git', 'worktree', 'add', t.name, DUC_BRANCH
+end
+
+task :prepare => DUC_WORKTREE do |t, args|
   version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
-  workdir = Pathname(args[:workdir] || '../Dash-User-Contributions') / 'docsets/Presto'
+  workdir = Pathname(DUC_WORKTREE) / 'docsets/Presto'
 
   docset_json = workdir / 'docset.json'
   archive = workdir / DOCSET_ARCHIVE
@@ -195,7 +201,7 @@ task :prepare, [:workdir] do |t, args|
   puts "Resetting the working directory"
   Dir.chdir(workdir.to_s) {
     sh 'git', 'remote', 'update'
-    sh 'git', 'checkout', 'presto'
+    sh 'git', 'checkout', DUC_BRANCH
     sh 'git', 'reset', '--hard', 'upstream/master'
   }
 
@@ -222,6 +228,8 @@ task :prepare, [:workdir] do |t, args|
     sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
       path.relative_path_from(workdir).to_s
     }
+    sh 'git', 'commit', '-m', "Update Presto docset to #{version}"
+    sh 'git', 'push', '-f', 'origin', DUC_BRANCH
   }
 end
 
