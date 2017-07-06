@@ -197,7 +197,8 @@ file DUC_WORKDIR do |t|
   end
 end
 
-task :prepare => DUC_WORKDIR do |t, args|
+desc 'Push the generated docset if there is an update'
+task :push => DUC_WORKDIR do
   version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
   workdir = Pathname(DUC_WORKDIR) / 'docsets' / File.basename(DOCSET, '.docset')
 
