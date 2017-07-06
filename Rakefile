@@ -22,7 +22,8 @@ def extract_version(doc)
   doc.title[/Presto ([\d.]+)/, 1]
 end
 
-DOCSET = 'Presto.docset'
+DOCSET_NAME = 'Presto'
+DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
 DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
@@ -33,7 +34,7 @@ DUC_REPO_UPSTREAM = 'https://github.com/Kapeli/Dash-User-Contributions.git'
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
-desc 'Fetch the Presto document files.'
+desc "Fetch the #{DOCSET_NAME} document files."
 task :fetch => [DOCS_DIR, ICON_FILE]
 
 file DOCS_DIR do |t|
@@ -128,7 +129,7 @@ task :build => :fetch do |t|
 
       case path
       when 'index.html'
-        puts "Generating docset for Presto #{extract_version(doc)}"
+        puts "Generating docset for #{DOCSET_NAME} #{extract_version(doc)}"
       when %r{\Afunctions/}
         if section = doc.at('h1 + .section[id]')
           add_operators.(section)
@@ -198,7 +199,7 @@ end
 
 task :prepare => DUC_WORKDIR do |t, args|
   version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
-  workdir = Pathname(DUC_WORKDIR) / 'docsets/Presto'
+  workdir = Pathname(DUC_WORKDIR) / 'docsets' / File.basename(DOCSET, '.docset')
 
   docset_json = workdir / 'docset.json'
   archive = workdir / DOCSET_ARCHIVE
@@ -238,7 +239,7 @@ task :prepare => DUC_WORKDIR do |t, args|
         sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
           path.relative_path_from(workdir).to_s
         }
-        sh 'git', 'commit', '-m', "Update Presto docset to #{version}"
+        sh 'git', 'commit', '-m', "Update #{DOCSET_NAME} docset to #{version}"
         sh 'git', 'push', '-f', 'origin', DUC_BRANCH
       end
     end
