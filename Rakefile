@@ -29,8 +29,10 @@ DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
-DUC_REPO = 'git@github.com:knu/Dash-User-Contributions.git'
-DUC_REPO_UPSTREAM = 'https://github.com/Kapeli/Dash-User-Contributions.git'
+DUC_OWNER = 'knu'
+DUC_REPO = "git@github.com:#{DUC_OWNER}/Dash-User-Contributions.git"
+DUC_OWNER_UPSTREAM = 'Kapeli'
+DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contributions.git"
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
@@ -242,6 +244,19 @@ task :push => DUC_WORKDIR do
         }
         sh 'git', 'commit', '-m', "Update #{DOCSET_NAME} docset to #{version}"
         sh 'git', 'push', '-f', 'origin', DUC_BRANCH
+      end
+    end
+  end
+end
+
+desc 'Send a pull-request'
+task :pr => DUC_WORKDIR do
+  cd DUC_WORKDIR do
+    sh 'git', 'diff', '--exit-code', '--stat', "#{DUC_BRANCH}..upstream/master" do |ok, _res|
+      if ok
+        puts "Nothing to send a pull-request for."
+      else
+        sh 'hub', 'pull-request', '-b', "#{DUC_OWNER_UPSTREAM}:master", '-h', "#{DUC_OWNER}:#{DUC_BRANCH}", '-m', `git log -1 --pretty=%s #{DUC_BRANCH}`.chomp
       end
     end
   end
