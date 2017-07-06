@@ -225,11 +225,17 @@ task :prepare => DUC_WORKTREE do |t, args|
   }
 
   cd workdir.to_s do
-    sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
-      path.relative_path_from(workdir).to_s
-    }
-    sh 'git', 'commit', '-m', "Update Presto docset to #{version}"
-    sh 'git', 'push', '-f', 'origin', DUC_BRANCH
+    sh 'git', 'diff', '--exit-code', docset_json.relative_path_from(workdir).to_s do |ok, _res|
+      if ok
+        puts "Nothing to commit."
+      else
+        sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
+          path.relative_path_from(workdir).to_s
+        }
+        sh 'git', 'commit', '-m', "Update Presto docset to #{version}"
+        sh 'git', 'push', '-f', 'origin', DUC_BRANCH
+      end
+    end
   end
 end
 
