@@ -28,7 +28,9 @@ DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
-DUC_WORKTREE = 'Dash-User-Contributions'
+DUC_REPO = 'git@github.com:knu/Dash-User-Contributions.git'
+DUC_REPO_UPSTREAM = 'https://github.com/Kapeli/Dash-User-Contributions.git'
+DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
 desc 'Fetch the Presto document files.'
@@ -186,13 +188,17 @@ task :build => :fetch do |t|
   end
 end
 
-file DUC_WORKTREE do |t|
-  sh 'env', 'GIT_DIR=../Dash-User-Contributions/.git', 'git', 'worktree', 'add', t.name, DUC_BRANCH
+file DUC_WORKDIR do |t|
+  sh 'git', 'clone', DUC_REPO, t.name
+  cd t.name do
+    sh 'git', 'remote', 'add', 'upstream', DUC_REPO_UPSTREAM
+    sh 'git', 'remote', 'update', 'upstream'
+  end
 end
 
-task :prepare => DUC_WORKTREE do |t, args|
+task :prepare => DUC_WORKDIR do |t, args|
   version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
-  workdir = Pathname(DUC_WORKTREE) / 'docsets/Presto'
+  workdir = Pathname(DUC_WORKDIR) / 'docsets/Presto'
 
   docset_json = workdir / 'docset.json'
   archive = workdir / DOCSET_ARCHIVE
