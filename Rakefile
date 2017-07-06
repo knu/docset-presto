@@ -110,7 +110,7 @@ task :build => :fetch do |t|
 
   puts 'Indexing documents'
 
-  Dir.chdir(docdir) {
+  cd docdir do
     Dir.glob('**/*.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
 
@@ -183,7 +183,7 @@ task :build => :fetch do |t|
 
       File.write(path, doc.to_s)
     }
-  }
+  end
 end
 
 file DUC_WORKTREE do |t|
@@ -199,11 +199,11 @@ task :prepare => DUC_WORKTREE do |t, args|
   versioned_archive = workdir / 'versions' / version / DOCSET_ARCHIVE
 
   puts "Resetting the working directory"
-  Dir.chdir(workdir.to_s) {
+  cd workdir.to_s do
     sh 'git', 'remote', 'update'
     sh 'git', 'checkout', DUC_BRANCH
     sh 'git', 'reset', '--hard', 'upstream/master'
-  }
+  end
 
   sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET and
     mv DOCSET_ARCHIVE, archive and
@@ -224,13 +224,13 @@ task :prepare => DUC_WORKTREE do |t, args|
     f.truncate(f.tell)
   }
 
-  Dir.chdir(workdir.to_s) {
+  cd workdir.to_s do
     sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
       path.relative_path_from(workdir).to_s
     }
     sh 'git', 'commit', '-m', "Update Presto docset to #{version}"
     sh 'git', 'push', '-f', 'origin', DUC_BRANCH
-  }
+  end
 end
 
 desc 'Delete all fetched files and generated files'
