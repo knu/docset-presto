@@ -27,6 +27,7 @@ DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
 DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
+ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
 DUC_OWNER = 'knu'
@@ -36,20 +37,31 @@ DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contribu
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
-desc "Fetch the #{DOCSET_NAME} document files."
-task :fetch => [DOCS_DIR, ICON_FILE]
+desc "Refetch the #{DOCSET_NAME} document files."
+task :fetch => %i[fetch:icon fetch:docs]
 
-file DOCS_DIR do |t|
-  puts 'Downloading %s' % DOCS_URI
-  sh 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-nc', '-p', DOCS_URI.to_s
+namespace :fetch do
+  task :docs do
+    puts 'Downloading %s' % DOCS_URI
+    sh 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-N', '-p', DOCS_URI.to_s
+  end
+
+  task :icon do
+    sh 'wget', '-nv', '--append-output', FETCH_LOG, '-N', ICON_URL.to_s
+    ln ICON_URL.route_from(ICON_URL + './').to_s, ICON_FILE, force: true
+  end
 end
 
-file ICON_FILE do |t|
-  sh 'wget', '-nv', '--append-output', FETCH_LOG, '-O', t.name, '-nc', 'https://avatars3.githubusercontent.com/u/6882181?v=3&s=64'
+file DOCS_DIR do
+  Rake::Task[:'fetch:docs'].invoke
+end
+
+file ICON_FILE do
+  Rake::Task[:'fetch:icon'].invoke
 end
 
 desc 'Build a docset in the current directory.'
-task :build => :fetch do |t|
+task :build => [DOCS_DIR, ICON_FILE] do |t|
   target = DOCSET
   docdir = File.join(target, 'Contents/Resources/Documents')
 
