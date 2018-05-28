@@ -4,6 +4,7 @@ Bundler.require
 
 require 'json'
 require 'pathname'
+require 'tempfile'
 require 'uri'
 
 def text_node_match(node, pattern)
@@ -25,6 +26,10 @@ end
 DOCSET_NAME = 'Presto'
 DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
+ROOT_RELPATH = 'Contents/Resources/Documents'
+INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
+DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
+DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
 DOCS_URI = URI('https://prestodb.io/docs/current/')
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
@@ -62,20 +67,17 @@ end
 
 desc 'Build a docset in the current directory.'
 task :build => [DOCS_DIR, ICON_FILE] do |t|
-  target = DOCSET
-  docdir = File.join(target, 'Contents/Resources/Documents')
+  rm_rf DOCSET
 
-  rm_rf target
+  mkdir_p DOCS_ROOT
 
-  mkdir_p docdir
+  cp 'Info.plist', File.join(DOCSET, 'Contents')
+  cp ICON_FILE, DOCSET
 
-  cp 'Info.plist', File.join(target, 'Contents')
-  cp ICON_FILE, target
-
-  cp_r DOCS_DIR.to_s + '/.', docdir
+  cp_r DOCS_DIR.to_s + '/.', DOCS_ROOT
 
   # Index
-  db = SQLite3::Database.new(File.join(target, 'Contents/Resources/docSet.dsidx'))
+  db = SQLite3::Database.new(DOCS_INDEX)
 
   db.execute(<<-SQL)
     CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT);
@@ -127,7 +129,9 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
   puts 'Indexing documents'
 
-  cd docdir do
+  version = nil
+
+  cd DOCS_ROOT do
     Dir.glob('**/*.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
 
@@ -143,7 +147,8 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
       case path
       when 'index.html'
-        puts "Generating docset for #{DOCSET_NAME} #{extract_version(doc)}"
+        version ||= extract_version(doc)
+        puts "Generating docset for #{DOCSET_NAME} #{version}"
       when %r{\Afunctions/}
         if section = doc.at('h1 + .section[id]')
           add_operators.(section)
@@ -200,6 +205,78 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
       File.write(path, doc.to_s)
     }
+  end
+
+  insert.close
+
+  puts "Finished creating #{DOCSET} version #{version}"
+
+  db.close
+
+  Rake::Task[:diff].invoke
+end
+
+task :diff do
+  system "rake diff:index diff:docs | #{ENV['PAGER'] || 'more'}"
+end
+
+namespace :diff do
+  desc 'Show the differences in the index from an installed version.'
+  task :index do
+    old_index = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET, INDEX_RELPATH)
+
+    unless File.exist?(old_index)
+      puts "No installed version found."
+      exit
+    end
+
+    begin
+      sql = "SELECT name, type, path FROM searchIndex ORDER BY name"
+
+      odb = SQLite3::Database.new(old_index)
+      ndb = SQLite3::Database.new(DOCS_INDEX)
+
+      Tempfile.create(['old', '.txt']) { |otxt|
+        odb.execute(sql) { |row|
+          otxt.puts row.join("\t")
+        }
+        odb.close
+        otxt.close
+
+        Tempfile.create(['new', '.txt']) { |ntxt|
+          ndb.execute(sql) { |row|
+            ntxt.puts row.join("\t")
+          }
+          ndb.close
+          ntxt.close
+
+          sh 'diff', '-U3', otxt.path, ntxt.path do
+            # ignore status
+          end
+        }
+      }
+    ensure
+      odb&.close
+      ndb&.close
+    end
+  end
+
+  desc 'Show the differences in the docs from an installed version.'
+  task :docs do
+    old_root = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET, ROOT_RELPATH)
+
+    unless File.exist?(old_root)
+      puts "No installed version found."
+      exit
+    end
+
+    sh 'diff', '-rNU3',
+      '-x', '*.js',
+      '-x', '*.css',
+      '-x', '*.svg',
+      old_root, DOCS_ROOT do
+      # ignore status
+    end
   end
 end
 
