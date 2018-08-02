@@ -231,7 +231,7 @@ namespace :diff do
     end
 
     begin
-      sql = "SELECT name, type, path FROM searchIndex ORDER BY name"
+      sql = "SELECT name, type, path FROM searchIndex ORDER BY name, type, path"
 
       odb = SQLite3::Database.new(old_index)
       ndb = SQLite3::Database.new(DOCS_INDEX)
