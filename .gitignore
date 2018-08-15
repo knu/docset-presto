@@ -1,6 +1,6 @@
 Gemfile.lock
-Presto.docset/
-Presto.tgz
+*.docset/
+*.tgz
 6882181\?*
 icon.png
 prestodb.io/
