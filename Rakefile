@@ -42,7 +42,7 @@ DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contribu
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
-desc "Refetch the #{DOCSET_NAME} document files."
+desc "Fetch the #{DOCSET_NAME} document files."
 task :fetch => %i[fetch:icon fetch:docs]
 
 namespace :fetch do
