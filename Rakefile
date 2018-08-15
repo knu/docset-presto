@@ -26,6 +26,8 @@ end
 DOCSET_NAME = 'Presto'
 DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
+PREVIOUS_DOCSET = File.join('tmp', DOCSET)
+INSTALLED_DOCSET = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET)
 ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
@@ -41,6 +43,13 @@ DUC_OWNER_UPSTREAM = 'Kapeli'
 DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contributions.git"
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
+
+def previous_docset
+  [
+    INSTALLED_DOCSET,
+    PREVIOUS_DOCSET
+  ].find { |f| File.exist?(f) } or raise 'No previous version found'
+end
 
 desc "Fetch the #{DOCSET_NAME} document files."
 task :fetch => %i[fetch:icon fetch:docs]
@@ -223,12 +232,7 @@ end
 namespace :diff do
   desc 'Show the differences in the index from an installed version.'
   task :index do
-    old_index = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET, INDEX_RELPATH)
-
-    unless File.exist?(old_index)
-      puts "No installed version found."
-      exit
-    end
+    old_index = File.join(previous_docset, INDEX_RELPATH)
 
     begin
       sql = "SELECT name, type, path FROM searchIndex ORDER BY name, type, path"
@@ -263,12 +267,7 @@ namespace :diff do
 
   desc 'Show the differences in the docs from an installed version.'
   task :docs do
-    old_root = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET, ROOT_RELPATH)
-
-    unless File.exist?(old_root)
-      puts "No installed version found."
-      exit
-    end
+    old_root = File.join(previous_docset, ROOT_RELPATH)
 
     sh 'diff', '-rNU3',
       '-x', '*.js',
@@ -336,6 +335,9 @@ task :push => DUC_WORKDIR do
       end
     end
   end
+
+  mkdir_p File.dirname(PREVIOUS_DOCSET)
+  sh 'rsync', '-aP', '--delete', DOCSET, PREVIOUS_DOCSET
 end
 
 desc 'Send a pull-request'
