@@ -299,7 +299,7 @@ task :push => DUC_WORKDIR do
   puts "Resetting the working directory"
   cd workdir.to_s do
     sh 'git', 'remote', 'update'
-    sh 'git', 'checkout', DUC_BRANCH
+    sh 'git', 'checkout', '-b', DUC_BRANCH, 'upstream/master'
     sh 'git', 'reset', '--hard', 'upstream/master'
   end
 
@@ -331,7 +331,7 @@ task :push => DUC_WORKDIR do
           path.relative_path_from(workdir).to_s
         }
         sh 'git', 'commit', '-m', "Update #{DOCSET_NAME} docset to #{version}"
-        sh 'git', 'push', '-f', 'origin', DUC_BRANCH
+        sh 'git', 'push', '-f', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
       end
     end
   end
