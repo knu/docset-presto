@@ -6,6 +6,7 @@ require 'json'
 require 'pathname'
 require 'tempfile'
 require 'uri'
+require 'rubygems/version'
 
 def text_node_match(node, pattern)
   case node
@@ -19,15 +20,21 @@ def between_texts?(node, prev_pattern, next_pattern)
      text_node_match(node.next, next_pattern))
 end
 
-def extract_version(doc)
-  doc.title[/Presto ([\d.]+)/, 1]
+def extract_version
+  cd DOCS_ROOT do
+    Dir.glob('**/index.html') { |path|
+      doc = Nokogiri::HTML(File.read(path), path)
+      if version = doc.title[/Presto ([\d.]+)/, 1]
+        return version
+      end
+    }
+  end
+  nil
 end
 
 DOCSET_NAME = 'Presto'
 DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
-PREVIOUS_DOCSET = File.join('tmp', DOCSET)
-INSTALLED_DOCSET = File.join(File.expand_path('~/Library/Application Support/Dash/User Contributed'), DOCSET_NAME, DOCSET)
 ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
@@ -44,11 +51,19 @@ DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contribu
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
+def previous_version
+  current_version = Gem::Version.new(extract_version())
+  previous_version = Pathname.glob("versions/*/#{DOCSET}").map { |path|
+    Gem::Version.new(path.parent.basename.to_s)
+  }.sort.each_cons(2) { |i, j|
+    break i if j >= current_version
+  }&.to_s
+end
+
 def previous_docset
-  [
-    INSTALLED_DOCSET,
-    PREVIOUS_DOCSET
-  ].find { |f| File.exist?(f) } or raise 'No previous version found'
+  version = previous_version or raise 'No previous version found'
+
+  "versions/#{version}/#{DOCSET}"
 end
 
 desc "Fetch the #{DOCSET_NAME} document files."
@@ -136,9 +151,9 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     }
   }
 
-  puts 'Indexing documents'
+  version = extract_version or raise "Version unknown"
 
-  version = nil
+  puts "Generating docset for #{DOCSET_NAME} #{version}"
 
   cd DOCS_ROOT do
     Dir.glob('**/*.html') { |path|
@@ -155,9 +170,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       }
 
       case path
-      when 'index.html'
-        version ||= extract_version(doc)
-        puts "Generating docset for #{DOCSET_NAME} #{version}"
       when %r{\Afunctions/}
         if section = doc.at('h1 + .section[id]')
           add_operators.(section)
@@ -218,9 +230,12 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
   insert.close
 
-  puts "Finished creating #{DOCSET} version #{version}"
-
   db.close
+
+  mkdir_p "versions/#{version}/#{DOCSET}"
+  sh 'rsync', '-a', '--exclude=.DS_Store', '--delete', "#{DOCSET}/", "versions/#{version}/#{DOCSET}/"
+
+  puts "Finished creating #{DOCSET} #{version}"
 
   Rake::Task[:diff].invoke
 end
@@ -309,10 +324,10 @@ task :push => DUC_WORKDIR do
     end
   end
 
-  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET and
-    mv DOCSET_ARCHIVE, archive and
-    mkdir_p versioned_archive.dirname and
-    cp archive, versioned_archive
+  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET
+  mv DOCSET_ARCHIVE, archive
+  mkdir_p versioned_archive.dirname
+  cp archive, versioned_archive
 
   puts "Updating #{docset_json}"
   File.open(docset_json, 'r+') { |f|
