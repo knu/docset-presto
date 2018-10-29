@@ -304,7 +304,7 @@ end
 
 desc 'Push the generated docset if there is an update'
 task :push => DUC_WORKDIR do
-  version = extract_version(Nokogiri::HTML(File.read(File.join(DOCSET, 'Contents/Resources/Documents/index.html'))))
+  version = extract_version
   workdir = Pathname(DUC_WORKDIR) / 'docsets' / File.basename(DOCSET, '.docset')
 
   docset_json = workdir / 'docset.json'
