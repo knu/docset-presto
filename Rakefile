@@ -356,9 +356,6 @@ task :push => DUC_WORKDIR do
       end
     end
   end
-
-  mkdir_p File.dirname(PREVIOUS_DOCSET)
-  sh 'rsync', '-aP', '--delete', DOCSET, PREVIOUS_DOCSET
 end
 
 desc 'Send a pull-request'
