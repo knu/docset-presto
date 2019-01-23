@@ -161,8 +161,8 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
       if h1 = doc.at_css('.content h1')
         case title = h1.text
-        when /\A[\d\.]+ /
-          index_item.(path, h1, 'Section', title)
+        when /\A[\d\.]+ (.+)/
+          index_item.(path, h1, 'Section', $1)
         end
       end
       doc.css('.content h2, .content h3').each { |h|
