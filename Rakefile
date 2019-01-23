@@ -113,7 +113,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
   SQL
 
   anchor_section = ->(path, node, name) {
-    type = 'Section'.freeze
+    type = 'Section'
     a = Nokogiri::XML::Node.new('a', node.document)
     a['name'] = id = '//apple_ref/cpp/%s/%s' % [type, name].map { |s|
       URI.encode_www_form_component(s).gsub('+', '%20')
