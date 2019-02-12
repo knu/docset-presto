@@ -55,9 +55,9 @@ def previous_version
   current_version = Gem::Version.new(extract_version())
   previous_version = Pathname.glob("versions/*/#{DOCSET}").map { |path|
     Gem::Version.new(path.parent.basename.to_s)
-  }.sort.each_cons(2) { |i, j|
-    break i if j >= current_version
-  }&.to_s
+  }.select { |version|
+    version < current_version
+  }.max&.to_s
 end
 
 def previous_docset
