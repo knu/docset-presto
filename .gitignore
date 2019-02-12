@@ -5,7 +5,7 @@ Gemfile.lock
 *.tgz
 6882181\?*
 icon.png
-prestodb.io/
+prestosql.io/
 wget.log
 Dash-User-Contributions/
 tmp/
