@@ -39,7 +39,7 @@ ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
 DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
-DOCS_URI = URI('https://prestosql.io/docs/current/')
+DOCS_URI = URI("https://prestosql.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
 ICON_FILE = Pathname('icon.png')
@@ -317,7 +317,7 @@ task :push => DUC_WORKDIR do
     sh 'git', 'rev-parse', '--verify', '--quiet', DUC_BRANCH do |ok, |
       if ok
         sh 'git', 'checkout', DUC_BRANCH
-        sh 'git', 'reset', '--hard', 'upstream/master'
+        sh 'git', 'reset', '--hard', 'upstream/master' unless ENV['NO_RESET']
       else
         sh 'git', 'checkout', '-b', DUC_BRANCH, 'upstream/master'
       end
