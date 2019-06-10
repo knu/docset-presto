@@ -288,6 +288,8 @@ namespace :diff do
       '-x', '*.js',
       '-x', '*.css',
       '-x', '*.svg',
+      '-I', '^[[:space:]]+VERSION:[[:space:]]+\'[0-9.]+\',',
+      '-I', 'Presto [0-9]+',
       old_root, DOCS_ROOT do
       # ignore status
     end
