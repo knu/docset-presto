@@ -52,7 +52,7 @@ DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
 def previous_version
-  current_version = Gem::Version.new(extract_version())
+  current_version = Gem::Version.new(ENV['BUILD_VERSION'] || extract_version())
   previous_version = Pathname.glob("versions/*/#{DOCSET}").map { |path|
     Gem::Version.new(path.parent.basename.to_s)
   }.select { |version|
@@ -64,6 +64,14 @@ def previous_docset
   version = previous_version or raise 'No previous version found'
 
   "versions/#{version}/#{DOCSET}"
+end
+
+def built_docset
+  if version = ENV['BUILD_VERSION']
+    "versions/#{version}/#{DOCSET}"
+  else
+    DOCSET
+  end
 end
 
 desc "Fetch the #{DOCSET_NAME} document files."
@@ -248,12 +256,13 @@ namespace :diff do
   desc 'Show the differences in the index from an installed version.'
   task :index do
     old_index = File.join(previous_docset, INDEX_RELPATH)
+    new_index = File.join(built_docset, INDEX_RELPATH)
 
     begin
       sql = "SELECT name, type, path FROM searchIndex ORDER BY name, type, path"
 
       odb = SQLite3::Database.new(old_index)
-      ndb = SQLite3::Database.new(DOCS_INDEX)
+      ndb = SQLite3::Database.new(new_index)
 
       Tempfile.create(['old', '.txt']) { |otxt|
         odb.execute(sql) { |row|
@@ -283,6 +292,7 @@ namespace :diff do
   desc 'Show the differences in the docs from an installed version.'
   task :docs do
     old_root = File.join(previous_docset, ROOT_RELPATH)
+    new_root = File.join(built_docset, ROOT_RELPATH)
 
     sh 'diff', '-rNU3',
       '-x', '*.js',
@@ -290,7 +300,7 @@ namespace :diff do
       '-x', '*.svg',
       '-I', '^[[:space:]]+VERSION:[[:space:]]+\'[0-9.]+\',',
       '-I', 'Presto [0-9]+',
-      old_root, DOCS_ROOT do
+      old_root, new_root do
       # ignore status
     end
   end
