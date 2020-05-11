@@ -160,13 +160,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       doc = Nokogiri::HTML(File.read(path), path)
 
       if h1 = doc.at_css('.content h1')
-        case title = h1.text
+        case title = h1.text.chomp('#')
         when /\A[\d\.]+ (.+)/
           index_item.(path, h1, 'Section', $1)
         end
       end
       doc.css('.content h2, .content h3').each { |h|
-        anchor_section.(path, h, h.text)
+        anchor_section.(path, h, h.text.chomp('#'))
       }
 
       case path
@@ -175,7 +175,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           add_operators.(section)
         end
         doc.xpath('//*[@class = "content"]//h2[not(../dl[@class = "function"])]').each { |h2|
-          case h2.text
+          case h2.text.chomp('#')
           when /\A(?:[\w ]+: )?(?<operators>(?:(?:(?<op>(?:(?<w>[A-Z]+) )*\g<w>), )*\g<op> and )?\g<op>)\z/
             $~[:operators].scan(/(?<op>(?:(?<w>[A-Z]+) )*\g<w>)/) {
               index_item.(path, h2, 'Operator', $~[:op])
@@ -190,21 +190,21 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         }
       when 'language/types.html'
         doc.css('.content h2').each { |h2|
-          case text = h2.text
+          case text = h2.text.chomp('#')
           when /\A((?<w>[A-Z]+) )*\g<w>\z/
             index_item.(path, h2, 'Type', text)
           end
         }
       when %r{\Asql/}
         doc.css('.content h1').each { |h1|
-          case h1.text
+          case h1.text.chomp('#')
           when /\A[\d\.]+ (?<st>((?<w>[A-Z]+) )*\g<w>)\z/
             index_item.(path, h1, 'Statement', $~[:st])
           end
         }
         if path == 'sql/select.html'
           doc.css('.content h2, .content h3').each { |h|
-            case h.text
+            case h.text.chomp('#')
             when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) \| )*\g<q>)(?: Clause)?\z/
               $~[:queries].scan(/(?<q>(?:(?<w>[A-Z]+) )*\g<w>)/) {
                 index_item.(path, h, 'Query', $~[:q])
