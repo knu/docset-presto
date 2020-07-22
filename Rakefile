@@ -146,19 +146,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     insert.execute(name, type, url)
   }
 
-  add_operators = ->(section) {
-    path = section.document.url
-    section.css('.literal > .pre').each { |pre|
-      if !pre.at('./preceding-sibling::*') && (
-           pre.at('./ancestor::td[not(./preceding-sibling::td)]') ||
-           between_texts?(pre.parent, /\AThe \z/, /\A operator /) ||
-           between_texts?(pre.parent, / expressions are written with \z/, /\A:/)  # Lambda Expression
-         )
-        index_item.(path, pre, 'Operator', pre.text)
-      end
-    }
-  }
-
   version = extract_version or raise "Version unknown"
 
   puts "Generating docset for #{DOCSET_NAME} #{version}"
@@ -166,23 +153,66 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
   cd DOCS_ROOT do
     Dir.glob('**/*.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
+      main = doc.at('article') or next
 
-      if h1 = doc.at_css('.content h1')
-        case title = h1.text.chomp('#')
-        when /\A[\d\.]+ (.+)/
-          index_item.(path, h1, 'Section', $1)
-        end
+      if h1 = main.at_css('h1')
+        index_item.(path, h1, 'Section', h1.text.chomp('#'))
       end
-      doc.css('.content h2, .content h3').each { |h|
+      main.css('h2, h3').each { |h|
         anchor_section.(path, h, h.text.chomp('#'))
       }
 
       case path
       when %r{\Afunctions/}
-        if section = doc.at('h1 + .section[id]')
-          add_operators.(section)
+        case File.basename(path, '.html')
+        when 'decimal'
+          main.css('.literal > .pre').each { |pre|
+            case pre.text
+            when 'DECIMAL'
+              index_item.(path, pre, 'Operator', pre.text)
+            end
+          }
+
+          main.at('//h2[contains(string(.), " Operator")]/following-sibling::table').css('td:first-of-type .literal > .pre').each { |pre|
+            case pre.text
+            when %r{\A[+\-*/%]\z}
+              index_item.(path, pre, 'Operator', pre.text)
+            end
+          }
+          next
+        when 'lambda'
+          main.css('.literal > .pre').each { |pre|
+            case pre.text
+            when '->'
+              index_item.(path, pre, 'Operator', pre.text)
+            end
+          }
+        when 'list'
+          next
         end
-        doc.xpath('//*[@class = "content"]//h2[not(../dl[@class = "function"])]').each { |h2|
+
+        main.xpath('//h2[contains(string(.), " Operator")]/following-sibling::*').each { |el|
+          case el.name
+          when 'h1', 'h2'
+            break
+          when 'table'
+            if el.at('//th[string(.) = "Operator"]')
+              el.css('td:first-of-type .literal > .pre').each_with_object({}) { |pre, seen|
+                op = pre.text
+                next if seen[op]
+
+                index_item.(path, pre, 'Operator', op)
+                seen[op] = true
+              }
+            end
+          when 'p'
+            el.css('.literal > .pre').each { |pre|
+              index_item.(path, pre, 'Operator', pre.text)
+            }
+          end
+        }
+
+        main.css('h2').each { |h2|
           case h2.text.chomp('#')
           when /\A(?:[\w ]+: )?(?<operators>(?:(?:(?<op>(?:(?<w>[A-Z]+) )*\g<w>), )*\g<op> and )?\g<op>)\z/
             $~[:operators].scan(/(?<op>(?:(?<w>[A-Z]+) )*\g<w>)/) {
@@ -191,27 +221,36 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        doc.css('.content h3 > .literal > .pre').each { |pre|
-          if pre.parent.parent.children.size == 1
-            index_item.(path, pre, 'Variable', pre.text)
-          end
-        }
+        if h = main.at('//h2[contains(string(.), " Properties")]')
+          h.xpath('./following-sibling::*').each { |el|
+            case el.name
+            when 'h1', 'h2'
+              break
+            when 'table'
+              if el.at('//th[string(.) = "Property Name"]')
+                el.css('td:first-of-type .literal > .pre').each { |pre|
+                  index_item.(path, pre, 'Variable', pre.text)
+                }
+              end
+            end
+          }
+        end
       when 'language/types.html'
-        doc.css('.content h2').each { |h2|
+        main.css('h2').each { |h2|
           case text = h2.text.chomp('#')
           when /\A((?<w>[A-Z]+) )*\g<w>\z/
             index_item.(path, h2, 'Type', text)
           end
         }
       when %r{\Asql/}
-        doc.css('.content h1').each { |h1|
+        main.css('h1').each { |h1|
           case h1.text.chomp('#')
-          when /\A[\d\.]+ (?<st>((?<w>[A-Z]+) )*\g<w>)\z/
+          when /\A(?<st>((?<w>[A-Z]+) )*\g<w>)\z/
             index_item.(path, h1, 'Statement', $~[:st])
           end
         }
         if path == 'sql/select.html'
-          doc.css('.content h2, .content h3').each { |h|
+          main.css('h2, h3').each { |h|
             case h.text.chomp('#')
             when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) \| )*\g<q>)(?: Clause)?\z/
               $~[:queries].scan(/(?<q>(?:(?<w>[A-Z]+) )*\g<w>)/) {
@@ -222,7 +261,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
-      doc.css('code.descname').each { |descname|
+      main.css('code.descname').each { |descname|
         func = descname.text
         type = 'Function'
         if descclassname = descname.at('./preceding-sibling::*[1][local-name() = "code" and @class = "descclassname" and text()]')
