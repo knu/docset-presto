@@ -153,6 +153,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
   cd DOCS_ROOT do
     Dir.glob('**/*.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
+
+      doc.css('link[href="https://fonts.gstatic.com/"][rel="preconnect"]').remove
+      doc.css('link[href^="https://fonts.googleapis.com/"][rel="stylesheet"]').remove
+      doc.css('link[href~="://"]').each { |node|
+        warn "#{path} refers to an external resource: #{node.to_s}"
+      }
+
       main = doc.at('article') or next
 
       if h1 = main.at_css('h1')
