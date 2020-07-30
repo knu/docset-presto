@@ -23,14 +23,14 @@ References
 
 - [GitHub Project](https://github.com/knu/docset-presto)
 
-- [Presto Documentation](https://prestodb.io/docs/current/)
+- [Presto Documentation](https://prestosql.io/docs/current/)
 
 License
 -------
 
 This build script suite is:
 
-Copyright (c) 2017 [Akinori MUSHA](https://akinori.org/)
+Copyright (c) 2017-2020 [Akinori MUSHA](https://akinori.org/)
 
 Licensed under the 2-clause BSD license.
 See `LICENSE` for details.
