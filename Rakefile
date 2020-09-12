@@ -151,6 +151,23 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
   puts "Generating docset for #{DOCSET_NAME} #{version}"
 
   cd DOCS_ROOT do
+    File.open("_static/presto.css", "a") { |css|
+      css.print <<~CSS
+
+        /* Added for docset */
+        header {
+          display: none;
+        }
+        .md-main__inner, .md-container, .md-content__inner {
+          padding-top: 0px;
+        }
+        dt:target {
+          margin-top: 0px;
+          padding-top: 0px;
+        }
+      CSS
+    }
+
     Dir.glob('**/*.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
 
