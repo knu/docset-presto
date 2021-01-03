@@ -74,17 +74,28 @@ def built_docset
   end
 end
 
+def wget(*args)
+  sh(
+    'wget',
+    '-nv',
+    '--append-output', FETCH_LOG,
+    '-N',
+    '--retry-on-http-error=500,502,503,504',
+    *args
+  )
+end
+
 desc "Fetch the #{DOCSET_NAME} document files."
 task :fetch => %i[fetch:icon fetch:docs]
 
 namespace :fetch do
   task :docs do
     puts 'Downloading %s' % DOCS_URI
-    sh 'wget', '-nv', '--append-output', FETCH_LOG, '-r', '--no-parent', '-N', '-p', DOCS_URI.to_s
+    wget '-r', '--no-parent', '-p', DOCS_URI.to_s
   end
 
   task :icon do
-    sh 'wget', '-nv', '--append-output', FETCH_LOG, '-N', ICON_URL.to_s
+    wget ICON_URL.to_s
     ln ICON_URL.route_from(ICON_URL + './').to_s, ICON_FILE, force: true
   end
 end
