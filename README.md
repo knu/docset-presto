@@ -23,7 +23,7 @@ References
 
 - [GitHub Project](https://github.com/knu/docset-presto)
 
-- [Presto Documentation](https://prestosql.io/docs/current/)
+- [Presto Documentation](https://trino.io/docs/current/)
 
 License
 -------

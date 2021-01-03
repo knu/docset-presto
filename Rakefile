@@ -39,7 +39,7 @@ ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
 DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
-DOCS_URI = URI("https://prestosql.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
+DOCS_URI = URI("https://trino.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
 ICON_FILE = Pathname('icon.png')

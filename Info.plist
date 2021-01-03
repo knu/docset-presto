@@ -11,7 +11,7 @@
 	<key>isDashDocset</key>
 	<true/>
 	<key>DashDocSetFallbackURL</key>
-	<string>https://prestosql.io/docs/current/</string>
+	<string>https://trino.io/docs/current/</string>
 	<key>DashDocSetFamily</key>
 	<string>dashtoc</string>
 </dict>
