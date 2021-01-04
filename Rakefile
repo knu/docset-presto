@@ -51,13 +51,18 @@ DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contribu
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
 DUC_BRANCH = 'presto'
 
+def current_version
+  ENV['BUILD_VERSION'] || extract_version()
+end
+
 def previous_version
-  current_version = Gem::Version.new(ENV['BUILD_VERSION'] || extract_version())
-  previous_version = Pathname.glob("versions/*/#{DOCSET}").map { |path|
-    Gem::Version.new(path.parent.basename.to_s)
-  }.select { |version|
-    version < current_version
-  }.max&.to_s
+  ENV['PREVIOUS_VERSION'] || Gem::Version.new(current_version).then { |current_version|
+    Pathname.glob("versions/*/#{DOCSET}").map { |path|
+      Gem::Version.new(path.parent.basename.to_s)
+    }.select { |version|
+      version < current_version
+    }.max&.to_s
+  }
 end
 
 def previous_docset
