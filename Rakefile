@@ -368,12 +368,13 @@ namespace :diff do
     old_root = File.join(previous_docset, ROOT_RELPATH)
     new_root = File.join(built_docset, ROOT_RELPATH)
 
-    sh 'diff', '-rNU3',
+    sh 'diff', '-rwNU3',
       '-x', '*.js',
       '-x', '*.css',
       '-x', '*.svg',
       '-I', '^[[:space:]]+VERSION:[[:space:]]+\'[0-9.]+\',',
       '-I', 'Presto [0-9]+',
+      '-I', '^[[:space:]]*$',
       old_root, new_root do
       # ignore status
     end
