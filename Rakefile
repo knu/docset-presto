@@ -445,6 +445,9 @@ task :push => DUC_WORKDIR do
         }
         sh 'git', 'commit', '-m', "Update #{DOCSET_NAME} docset to #{version}"
         sh 'git', 'push', '-fu', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
+
+        puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
+        puts "\t" + "#{DUC_REPO_UPSTREAM.delete_suffix(".git")}/compare/master...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
       end
     end
   end
