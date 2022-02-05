@@ -23,20 +23,20 @@ References
 
 - [GitHub Project](https://github.com/knu/docset-presto)
 
-- [Presto Documentation](https://trino.io/docs/current/)
+- [Presto Documentation](https://prestodb.io/docs/current/)
 
 License
 -------
 
 This build script suite is:
 
-Copyright (c) 2017-2020 [Akinori MUSHA](https://akinori.org/)
+Copyright (c) 2017-2022 [Akinori MUSHA](https://akinori.org/)
 
 Licensed under the 2-clause BSD license.
 See `LICENSE` for details.
 
 A generated docset will be:
 
-Copyright 2013-2016 Facebook
+Copyright 2013-2022 Facebook
 
 Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

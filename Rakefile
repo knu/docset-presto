@@ -39,9 +39,9 @@ ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
 DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
-DOCS_URI = URI("https://trino.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
+DOCS_URI = URI("https://prestodb.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
-ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
+ICON_URL = URI('https://avatars.githubusercontent.com/u/6882181?v=4&s=64')
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
 DUC_OWNER = 'knu'
@@ -136,6 +136,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, ?, ?);
   SQL
 
+  select = db.prepare(<<-SQL)
+    SELECT TRUE FROM searchIndex where type = ? AND name = ?;
+  SQL
+
   anchor_section = ->(path, node, name) {
     type = 'Section'
     a = Nokogiri::XML::Node.new('a', node.document)
@@ -160,6 +164,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       url = path
     end
     insert.execute(name, type, url)
+  }
+
+  has_item = ->(type, name) {
+    !select.execute!(type, name).empty?
   }
 
   version = extract_version or raise "Version unknown"
@@ -205,6 +213,18 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       case path
       when %r{\Afunctions/}
         case File.basename(path, '.html')
+        when 'conditional'
+          main.css('h2').each { |h|
+            title = h.text.chomp('#')
+            if h.at_xpath("./following-sibling::*[1]/code[string(.) = '#{title}' and starts-with(normalize-space(./following-sibling::text()[1]), 'expression ')]")
+              case title
+              when 'CASE'
+                index_item.(path, h, 'Query', title)
+              else
+                raise "Unknown expression: #{title}"
+              end
+            end
+          }
         when 'decimal'
           main.css('.literal > .pre').each { |pre|
             case pre.text
@@ -275,11 +295,19 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           }
         end
+        main.css('li .highlight-sql pre').each { |pre|
+          if procedure = pre.text[/\A(?:CALL\s+)?\K[^(]+/]
+            li = pre.at_xpath('(./ancestor::li)[1]') or next
+            index_item.(path, li, 'Procedure', procedure)
+          end
+        }
       when 'language/types.html'
-        main.css('h2').each { |h2|
-          case text = h2.text.chomp('#')
-          when /\A((?<w>[A-Z]+) )*\g<w>\z/
-            index_item.(path, h2, 'Type', text)
+        main.css('h3 code').each { |code|
+          case text = code.text.chomp('#')
+          when /\A(?<w>[A-Z][A-Za-z0-9]*(\(P\))?)( \g<w>)*\z/
+            index_item.(path, h, 'Type', text)
+          else
+            raise "Unknown type name: #{text}"
           end
         }
       when %r{\Asql/}
@@ -301,6 +329,22 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
+      if h = main.at_css('#procedures')
+        el = h
+        while el = el.next_element
+          case el.name
+          when /\Ah[1-6]\z/
+            break if el.name <= h.name
+          when 'ul'
+            el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
+              if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
+                index_item.(path, el, 'Procedure', procedure)
+              end
+            end
+          end
+        end
+      end
+
       main.css('code.descname').each { |descname|
         func = descname.text
         type = 'Function'
@@ -315,7 +359,52 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     }
   end
 
+  select.close
   insert.close
+
+  get_count = ->(**criteria) do
+    db.get_first_value(<<-SQL, criteria.values)
+      SELECT COUNT(*) from searchIndex where #{
+        criteria.each_key.map { |column| "#{column} = ?" }.join(' and ')
+      }
+    SQL
+  end
+
+  assert_exists = ->(**criteria) do
+    if get_count.(**criteria).zero?
+      raise "#{criteria.inspect} not found in index!"
+    end
+  end
+
+  puts 'Performing sanity check'
+
+  {
+    'Statement' => ['SELECT', 'INSERT', 'DELETE',  # There's no UPDATE in Presto DB.
+                    'SHOW CREATE FUNCTION'],
+    'Query' => ['CROSS JOIN',
+                'UNION', 'INTERSECT', 'EXCEPT',
+                'GROUP BY', 'LIMIT', 'OFFSET',
+                'IN', 'EXISTS', 'UNNEST',
+                'CASE'],
+    'Function' => ['count', 'merge',
+                   'array_sort', 'rank',
+                   'if', 'coalesce', 'nullif'],
+    'Procedure' => ['kudu.system.add_range_partition',
+                    'kudu.system.drop_range_partition',
+                    'system.create_empty_partition',
+                    'system.sync_partition_metadata'],
+    'Type' => ['BOOLEAN', 'BIGINT', 'DOUBLE', 'DECIMAL', 'VARCHAR', 'VARBINARY',
+               'DATE', 'TIMESTAMP', 'TIMESTAMP WITH TIME ZONE',
+               'ARRAY', 'UUID', 'HyperLogLog'],
+    'Operator' => ['+', '<=', '!=', '<>', '[]', '||',
+                   'BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
+                   'ANY', 'IS NULL', 'IS DISTINCT FROM'],
+    'Section' => ['BigQuery Connector']
+  }.each { |type, names|
+    names.each { |name|
+      assert_exists.(name: name, type: type)
+    }
+  }
 
   db.close
 
