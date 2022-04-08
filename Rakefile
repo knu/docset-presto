@@ -172,6 +172,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     !select.execute!(type, name).empty?
   }
 
+  in_procedures_section = ->(node) {
+    node.xpath('./ancestor::section[contains(@id, "procedures")]').size > 0
+  }
+
   version = extract_version or raise "Version unknown"
 
   puts "Generating docset for #{DOCSET_NAME} #{version}"
@@ -331,7 +335,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
-      if h = main.at_css('#procedures')
+      if h = main.at_css('h2#procedures')
         el = h
         while el = el.next_element
           case el.name
@@ -347,13 +351,19 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
-      main.css('code.descname').each { |descname|
-        func = descname.text
-        type = 'Function'
-        if descclassname = descname.at('./preceding-sibling::*[1][local-name() = "code" and @class = "descclassname" and text()]')
-          func = descclassname.text + func
-          type = 'Procedure'
-        end
+      main.css('.descname').each { |descname|
+        func =
+          if (prev = descname.previous).matches?('.descclassname')
+            prev.text + descname.text
+          else
+            descname.text
+          end
+        type =
+          if in_procedures_section.(descname)
+            'Procedure'
+          else
+            'Function'
+          end
         index_item.(path, descname, type, func)
       }
 
@@ -391,7 +401,8 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     'Function' => ['count', 'merge',
                    'array_sort', 'rank',
                    'if', 'coalesce', 'nullif'],
-    'Procedure' => ['kudu.system.add_range_partition',
+    'Procedure' => ['runtime.kill_query',
+                    'kudu.system.add_range_partition',
                     'kudu.system.drop_range_partition',
                     'system.create_empty_partition',
                     'system.sync_partition_metadata'],
