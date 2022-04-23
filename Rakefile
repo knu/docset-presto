@@ -267,30 +267,32 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           next
         end
 
-        main.xpath('.//h2[contains(string(.), " Operator")]/following-sibling::*').each { |el|
-          case el.name
-          when 'h1', 'h2'
-            break
-          when 'table'
-            if el.at('.//th[string(.) = "Operator"]')
-              el.css('td:first-of-type .literal > .pre').each_with_object({}) { |pre, seen|
-                op = pre.text
-                next if seen[op]
+        main.xpath('.//h2[contains(string(.), " Operator")]').each { |h|
+          h.xpath('./following-sibling::*').each { |el|
+            case el.name
+            when 'h1', 'h2'
+              break
+            when 'table'
+              if el.at('.//th[string(.) = "Operator"]')
+                el.css('td:first-of-type .literal > .pre').each_with_object({}) { |pre, seen|
+                  op = pre.text
+                  next if seen[op]
 
-                index_item.(path, pre, 'Operator', op)
-                seen[op] = true
+                  index_item.(path, pre, 'Operator', op)
+                  seen[op] = true
+                }
+              end
+            when 'p'
+              el.css('.literal').each { |literal|
+                case op = literal.text.gsub(/\s+/, ' ')
+                when /\A(?:NULL|TRUE|FALSE)\z|\A[a-z]/
+                  # ignore
+                else
+                  index_item.(path, literal, 'Operator', op)
+                end
               }
             end
-          when 'p'
-            el.css('.literal').each { |literal|
-              case op = literal.text.gsub(/\s+/, ' ')
-              when /\A(?:NULL|TRUE|FALSE)\z|\A[a-z]/
-                # ignore
-              else
-                index_item.(path, literal, 'Operator', op)
-              end
-            }
-          end
+          }
         }
 
         main.css('h2').each { |h2|
