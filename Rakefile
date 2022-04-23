@@ -282,8 +282,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
               }
             end
           when 'p'
-            el.css('.literal > .pre').each { |pre|
-              index_item.(path, pre, 'Operator', pre.text)
+            el.css('.literal').each { |literal|
+              case op = literal.text.gsub(/\s+/, ' ')
+              when /\A(?:NULL|TRUE|FALSE)\z|\A[a-z]/
+                # ignore
+              else
+                index_item.(path, literal, 'Operator', op)
+              end
             }
           end
         }
@@ -420,7 +425,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
                'DATE', 'TIMESTAMP', 'TIMESTAMP WITH TIME ZONE',
                'ARRAY', 'UUID', 'HyperLogLog'],
     'Operator' => ['+', '<=', '!=', '<>', '[]', '||',
-                   'BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
+                   'BETWEEN', 'NOT BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
                    'ANY', 'IS NULL', 'IS DISTINCT FROM'],
     'Section' => ['BigQuery Connector']
   }.each { |type, names|
