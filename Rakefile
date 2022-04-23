@@ -249,7 +249,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           }
 
-          main.at('.//h2[contains(string(.), " Operator")]/following-sibling::table').css('td:first-of-type .literal > .pre').each { |pre|
+          main.at('.//h2[contains(translate(., "O", "o"), " operator")]/following-sibling::table').css('td:first-of-type .literal > .pre').each { |pre|
             case pre.text
             when %r{\A[+\-*/%]\z}
               index_item.(path, pre, 'Operator', pre.text)
@@ -267,7 +267,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           next
         end
 
-        main.xpath('.//h2[contains(string(.), " Operator")]').each { |h|
+        main.xpath('.//h2[contains(translate(., "O", "o"), " operator")]').each { |h|
           h.xpath('./following-sibling::*').each { |el|
             case el.name
             when 'h1', 'h2'
@@ -304,7 +304,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        if h = main.at('.//h2[contains(string(.), " Properties")]')
+        if h = main.at('.//h2[contains(translate(., "P", "p"), " properties")]')
           h.xpath('./following-sibling::*').each { |el|
             case el.name
             when 'h1', 'h2'
