@@ -348,12 +348,38 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           }
         end
+
+        connector_name = nil
+
         main.css('li .highlight-sql pre').each { |pre|
           if procedure = pre.text[/\A(?:CALL\s+)?\K[^(]+/]
             li = pre.at_xpath('(./ancestor::li)[1]') or next
             index_item.(path, li, 'Procedure', procedure)
           end
         }
+
+        if h = main.at_css('h2#procedures')
+          connector_name ||=
+            main.xpath('//section[contains(@id, "configuration")]//pre').find { |pre|
+              if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
+                break name
+              end
+            } or raise "#{path}: connector.name not found"
+
+          el = h
+          while el = el.next_element
+            case el.name
+            when /\Ah[1-6]\z/
+              break if el.name <= h.name
+            when 'ul'
+              el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
+                if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
+                  index_item.(path, el, 'Procedure', "#{connector_name}.#{procedure}")
+                end
+              end
+            end
+          end
+        end
       when 'language/types.html'
         main.css('h3 > code').each { |code|
           case text = code.text.chomp('#')
@@ -379,22 +405,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
               }
             end
           }
-        end
-      end
-
-      if h = main.at_css('h2#procedures')
-        el = h
-        while el = el.next_element
-          case el.name
-          when /\Ah[1-6]\z/
-            break if el.name <= h.name
-          when 'ul'
-            el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
-              if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
-                index_item.(path, el, 'Procedure', procedure)
-              end
-            end
-          end
         end
       end
 
@@ -451,8 +461,8 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     'Procedure' => ['runtime.kill_query',
                     'kudu.system.add_range_partition',
                     'kudu.system.drop_range_partition',
-                    'system.create_empty_partition',
-                    'system.sync_partition_metadata'],
+                    'hive.system.create_empty_partition',
+                    'hive.system.sync_partition_metadata'],
     'Type' => ['BOOLEAN', 'BIGINT', 'DOUBLE', 'DECIMAL', 'VARCHAR', 'VARBINARY',
                'DATE', 'TIMESTAMP', 'TIMESTAMP WITH TIME ZONE',
                'ARRAY', 'UUID', 'HyperLogLog'],
