@@ -616,21 +616,27 @@ task :push => DUC_WORKDIR do
 
     sh paginate_command(%W[git diff #{json_path}], diff: true)
 
-    sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
-      path.relative_path_from(workdir).to_s
-    }
+    sh(*%W[git add], *[archive, versioned_archive, docset_json].map { |path| path.relative_path_from(workdir).to_s })
     message =
       if updated
         "Update #{DOCSET_NAME} docset to #{version}"
       else
         "Add #{DOCSET_NAME} docset #{version}"
       end
-    sh 'git', 'commit', '-m', message
-    sh 'git', 'push', '-fu', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
-
-    puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
-    puts "\t" + "#{DUC_REMOTE_URL_UPSTREAM.delete_suffix(".git")}/compare/#{DUC_DEFAULT_BRANCH}...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
+    sh(*%W[git commit -m #{message}])
+    sh(*%W[git push -fu origin #{DUC_BRANCH}:#{DUC_BRANCH}])
   end
+
+  sh(*%W[gh release create v#{version} -t v#{version} -n #{<<~NOTES} -- #{archive}])
+    This docset is generated from the official documentation of Presto.
+
+    #{DOCS_URI}
+
+    Copyright The Presto Foundation. All rights reserved. Presto is a registered trademark of LF Projects, LLC.
+  NOTES
+
+  puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
+  puts "\t" + "#{DUC_REMOTE_URL_UPSTREAM.delete_suffix(".git")}/compare/#{DUC_DEFAULT_BRANCH}...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
 end
 
 desc 'Send a pull-request'
