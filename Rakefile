@@ -46,6 +46,16 @@ def between_texts?(node, prev_pattern, next_pattern)
      text_node_match(node.next, next_pattern))
 end
 
+def remote_latest_version
+  agent = Mechanize.new
+  page = agent.get('http://prestodb.io/docs/current/')
+  page.at('title').text[/Presto ([\d.]+)/, 1]
+end
+
+def build_version
+  ENV['BUILD_VERSION'] || remote_latest_version
+end
+
 def extract_version
   cd DOCS_ROOT do
     Dir.glob('**/index.html') { |path|
@@ -65,7 +75,7 @@ ROOT_RELPATH = 'Contents/Resources/Documents'
 INDEX_RELPATH = 'Contents/Resources/docSet.dsidx'
 DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
 DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
-DOCS_URI = URI("https://prestodb.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
+DOCS_URI = URI("https://prestodb.io/docs/#{build_version}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars.githubusercontent.com/u/6882181?v=4&s=64')
 ICON_FILE = Pathname('icon.png')
