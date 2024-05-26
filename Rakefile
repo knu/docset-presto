@@ -158,6 +158,7 @@ def wget(*args)
     '--append-output', FETCH_LOG,
     '-N',
     '--retry-on-http-error=500,502,503,504',
+    '--reject-regex=/_static/$',
     *args
   )
 end
