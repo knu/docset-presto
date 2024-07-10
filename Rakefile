@@ -46,10 +46,6 @@ def between_texts?(node, prev_pattern, next_pattern)
      text_node_match(node.next, next_pattern))
 end
 
-def header_text(h)
-  h.text.chomp(h.at_css('a.headerlink')&.text)
-end
-
 def extract_version
   cd DOCS_ROOT do
     Dir.glob('**/index.html') { |path|
@@ -311,6 +307,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       doc = Nokogiri::HTML(File.read(path), path)
 
       doc.css('header, footer, [data-md-component="sidebar"], [data-md-component="skip"], #__drawer, #__search, a[title^="Edit "]').remove
+      doc.css('.headerlink').remove
 
       doc.css('link[href="https://fonts.gstatic.com/"][rel="preconnect"]').remove
       doc.css('link[href^="https://fonts.googleapis.com/"][rel="stylesheet"]').remove
@@ -327,10 +324,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       sections = SectionSections.new(main)
 
       if h1 = sections.find { |h| h.name == 'h1' }
-        index_item.(path, h1, 'Section', header_text(h1))
+        index_item.(path, h1, 'Section', h1.text)
       end
       sections.each('h2, h3') do |h|
-        anchor_section.(path, h, header_text(h))
+        anchor_section.(path, h, h.text)
       end
 
       case path
@@ -338,7 +335,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         case File.basename(path, '.html')
         when 'conditional'
           main.css('h2').each { |h|
-            title = header_text(h)
+            title = h.text
             if h.at_xpath("./following-sibling::*[1]/code[string(.) = '#{title}' and starts-with(normalize-space(./following-sibling::text()[1]), 'expression ')]")
               case title
               when 'CASE'
@@ -403,7 +400,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         }
 
         main.css('h2').each { |h2|
-          case header_text(h2)
+          case h2.text
           when /\A(?:[\w ]+: )?(?<operators>(?:(?:(?<op>(?:(?<w>[A-Z]+) )*\g<w>), )*\g<op> and )?\g<op>)\z/
             $~[:operators].scan(/(?<op>(?:(?<w>[A-Z]+) )*\g<w>)/) {
               index_item.(path, h2, 'Operator', $~[:op])
@@ -459,7 +456,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       when 'language/types.html'
         main.css('h3 > code').each { |code|
-          case text = header_text(code)
+          case text = code.text
           when /\A(?<w>[A-Z][A-Za-z0-9]*(\(P\))?)( \g<w>)*\z/
             index_item.(path, code.parent, 'Type', text)
           else
@@ -468,14 +465,14 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         }
       when %r{\Asql/}
         main.css('h1').each { |h1|
-          case header_text(h1)
+          case h1.text
           when /\A(?<st>((?<w>[A-Z]+) )*\g<w>)\z/
             index_item.(path, h1, 'Statement', $~[:st])
           end
         }
         if path == 'sql/select.html'
           main.css('h2, h3').each { |h|
-            case header_text(h)
+            case h.text
             when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) \| )*\g<q>)(?: Clause)?\z/
               $~[:queries].scan(/(?<q>(?:(?<w>[A-Z]+) )*\g<w>)/) {
                 index_item.(path, h, 'Query', $~[:q])
