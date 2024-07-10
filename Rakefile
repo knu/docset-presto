@@ -105,6 +105,8 @@ DOCS_URI = URI("https://prestodb.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars.githubusercontent.com/u/6882181?v=4&s=64')
 ICON_FILE = Pathname('icon.png')
+COMMON_CSS = Pathname('common.css')
+COMMON_CSS_URL = DOCS_URI + COMMON_CSS.to_s
 FETCH_LOG = 'wget.log'
 DUC_REPO = 'Dash-User-Contributions'
 DUC_OWNER = 'knu'
@@ -249,22 +251,51 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     !select.execute!(type, name).empty?
   }
 
-  in_procedures_section = ->(node) {
-    node.xpath('./ancestor::section[contains(@id, "procedures")]').size > 0
-  }
+  class SectionSections
+    def initialize(content)
+      @sections = content.css('h1, h2, h3, h4, h5, h6').to_a
+    end
+
+    include Enumerable
+
+    def each(query = nil, &)
+      return to_enum(__method__, query) unless block_given?
+
+      if query
+        @sections.each do |section|
+          yield section if section.matches?(query)
+        end
+      else
+        @sections.each(&)
+      end
+    end
+
+    def in_section?(node, id_substr)
+      current_level = nil
+
+      @sections.reverse_each do |section|
+        next if (section <=> node)&.positive?
+
+        name = section.name
+        next if current_level&.>= name
+
+        current_level = name
+        return true if section['id']&.include?(id_substr)
+      end
+
+      false
+    end
+  end
 
   version = extract_version or raise "Version unknown"
 
   puts "Generating docset for #{DOCSET_NAME} #{version}"
 
   cd DOCS_ROOT do
-    File.open("_static/presto.css", "a") { |css|
-      css.print <<~CSS
+    COMMON_CSS.write(
+      <<~CSS
 
         /* Added for docset */
-        header {
-          display: none;
-        }
         .md-main__inner, .md-container, .md-content__inner {
           padding-top: 0px;
         }
@@ -273,10 +304,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           padding-top: 0px;
         }
       CSS
-    }
+    )
 
-    Dir.glob('**/*.html') { |path|
+    Dir.glob('**/*.html') do |path|
+      uri = DOCS_URI + path
       doc = Nokogiri::HTML(File.read(path), path)
+
+      doc.css('header, footer, [data-md-component="sidebar"], [data-md-component="skip"], #__drawer, #__search, a[title^="Edit "]').remove
 
       doc.css('link[href="https://fonts.gstatic.com/"][rel="preconnect"]').remove
       doc.css('link[href^="https://fonts.googleapis.com/"][rel="stylesheet"]').remove
@@ -284,14 +318,20 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         warn "#{path} refers to an external resource: #{node.to_s}"
       }
 
-      main = doc.at('article') or next
+      doc.at('head') << Nokogiri::XML::Node.new('link', doc).tap { |link|
+        link['rel'] = 'stylesheet'
+        link['href'] = uri.route_to(COMMON_CSS_URL)
+      }
 
-      if h1 = main.at_css('h1')
+      main = doc.at('article') or next
+      sections = SectionSections.new(main)
+
+      if h1 = sections.find { |h| h.name == 'h1' }
         index_item.(path, h1, 'Section', header_text(h1))
       end
-      main.css('h2, h3').each { |h|
+      sections.each('h2, h3') do |h|
         anchor_section.(path, h, header_text(h))
-      }
+      end
 
       case path
       when %r{\Afunctions/}
@@ -397,7 +437,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
         if h = main.at_css('h2#procedures')
           connector_name ||=
-            main.xpath('//section[contains(@id, "configuration")]//pre').find { |pre|
+            main.xpath('//pre').find { |pre|
               if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
                 break name
               end
@@ -445,24 +485,19 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
-      main.css('.descname').each { |descname|
-        func =
-          if (prev = descname.previous).matches?('.descclassname')
-            prev.text + descname.text
-          else
-            descname.text
-          end
+      main.css('.function .sig').each { |sig|
+        func = sig.text.strip[/\A(?:[A-Z]+ )?[^\s\(]+/]
         type =
-          if in_procedures_section.(descname)
+          if sections.in_section?(sig, 'procedures')
             'Procedure'
           else
             'Function'
           end
-        index_item.(path, descname, type, func)
+        index_item.(path, sig, type, func)
       }
-
+    ensure
       File.write(path, doc.to_s)
-    }
+    end
   end
 
   select.close
