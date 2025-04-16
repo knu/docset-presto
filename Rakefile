@@ -113,6 +113,14 @@ DUC_WORKDIR = DUC_REPO
 DUC_DEFAULT_BRANCH = 'master'
 DUC_BRANCH = 'presto'
 
+URI_ATTRS = [
+  ['a', 'href'],
+  ['img', 'src'],
+  ['link', 'href'],
+  ['script', 'src'],
+  ['iframe', 'src'],
+]
+
 def duc_versions(ref)
   Rake::Task[DUC_WORKDIR].invoke
 
@@ -267,6 +275,38 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     !select.execute!(type, name).empty?
   }
 
+  resolve_url = ->(href, uri) do
+    begin
+      case abs = uri + href
+      when URI::HTTP
+        # ok
+      else
+        return href
+      end
+    rescue URI::Error => e
+      case href
+      when /\Adata:/, /\Amailto:/
+        return href
+      end
+      warn e.message if bad_hrefs.add?(href)
+      return href
+    end
+
+    rel = DOCS_URI.route_to(abs)
+    if rel.host
+      return abs
+    end
+
+    localpath = "#{rel.path}#{rel.query&.prepend('?')}"
+    if File.file?(localpath)
+      return uri.route_to(abs)
+    end
+
+    abs
+  end
+
+  bad_hrefs = Set[]
+
   class SectionSections
     def initialize(content)
       @sections = content.css('h1, h2, h3, h4, h5, h6').to_a
@@ -331,9 +371,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
       doc.css('link[href="https://fonts.gstatic.com/"][rel="preconnect"]').remove
       doc.css('link[href^="https://fonts.googleapis.com/"][rel="stylesheet"]').remove
-      doc.css('link[href~="://"]').each { |node|
-        warn "#{path} refers to an external resource: #{node.to_s}"
-      }
 
       if path == 'installation/deployment.html'
         doc.at('a.external[href="https://prestodb.io/docs/current/installation/cli.html"]')&.tap { |a|
@@ -341,6 +378,16 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           puts "#{path} has a broken link to fix"
         } or warn "#{path} no longer has a broken link"
       end
+
+      URI_ATTRS.each do |tag, attr|
+        doc.css("#{tag}[#{attr}]").each do |e|
+          e[attr] = resolve_url.(e[attr], uri)
+        end
+      end
+
+      doc.css('link[href~="://"]').each { |node|
+        warn "#{path} refers to an external resource: #{node.to_s}"
+      }
 
       doc.at('head') << Nokogiri::XML::Node.new('link', doc).tap { |link|
         link['rel'] = 'stylesheet'
