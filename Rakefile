@@ -180,6 +180,7 @@ def wget(*args)
     '-N',
     '--retry-on-http-error=500,502,503,504',
     '--reject-regex=/_static/$',
+    '--reject-regex=/installation/cli\.html$',
     *args
   )
 end
@@ -333,6 +334,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       doc.css('link[href~="://"]').each { |node|
         warn "#{path} refers to an external resource: #{node.to_s}"
       }
+
+      if path == 'installation/deployment.html'
+        doc.at('a.external[href="https://prestodb.io/docs/current/installation/cli.html"]')&.tap { |a|
+          a['href'] = 'https://prestodb.io/docs/current/clients/presto-cli.html'
+          puts "#{path} has a broken link to fix"
+        } or warn "#{path} no longer has a broken link"
+      end
 
       doc.at('head') << Nokogiri::XML::Node.new('link', doc).tap { |link|
         link['rel'] = 'stylesheet'
