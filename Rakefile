@@ -368,13 +368,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       doc.css('link[href="https://fonts.gstatic.com/"][rel="preconnect"]').remove
       doc.css('link[href^="https://fonts.googleapis.com/"][rel="stylesheet"]').remove
 
-      if path == 'installation/deployment.html'
-        doc.at('a.external[href="https://prestodb.io/docs/current/installation/cli.html"]')&.tap { |a|
-          a['href'] = 'https://prestodb.io/docs/current/clients/presto-cli.html'
-          puts "#{path} has a broken link to fix"
-        } or warn "#{path} no longer has a broken link"
-      end
-
       URI_ATTRS.each do |tag, attr|
         doc.css("#{tag}[#{attr}]").each do |e|
           e[attr] = resolve_url.(e[attr], uri)
