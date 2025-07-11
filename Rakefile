@@ -491,7 +491,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         main.css('li .highlight-sql pre').each { |pre|
           if procedure = pre.text[/\A(?:CALL\s+)?\K[^(]+/]
             li = pre.at_xpath('(./ancestor::li)[1]') or next
-            index_item.(path, li, 'Procedure', procedure)
+            index_item.(path, li, 'Procedure', procedure.sub(/\A<[^.>]+>(?=\.)/, connector_name))
           end
         }
 
