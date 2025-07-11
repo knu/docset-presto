@@ -5,6 +5,7 @@ Gemfile.lock
 *.tgz
 6882181\?*
 icon.png
+presto/
 prestodb.io/
 wget.log
 Dash-User-Contributions/

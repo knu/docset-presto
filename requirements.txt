@@ -1,0 +1,17 @@
+sphinx
+sphinx-immaterial
+sphinx-copybutton
+sphinx-autobuild
+docutils
+pygments
+Jinja2
+MarkupSafe
+babel
+alabaster
+sphinxcontrib-applehelp
+sphinxcontrib-devhelp
+sphinxcontrib-htmlhelp
+sphinxcontrib-jsmath
+sphinxcontrib-qthelp
+sphinxcontrib-serializinghtml
+Pillow

@@ -198,8 +198,8 @@ task :fetch => %i[fetch:icon fetch:docs]
 
 namespace :fetch do
   task :docs do
-    puts 'Downloading %s' % DOCS_URI
-    wget '-r', '--no-parent', '-p', DOCS_URI.to_s
+    puts 'Building %s locally' % DOCS_URI
+    sh './build-docs.sh', ENV['BUILD_VERSION'] || 'current'
   end
 
   task :icon do
@@ -288,17 +288,13 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       when /\Adata:/, /\Amailto:/
         return href
       end
-      warn e.message if bad_hrefs.add?(href)
+      warn e.message
       return href
     end
 
     rel = DOCS_URI.route_to(abs)
-    if rel.host
-      return abs
-    end
 
-    localpath = "#{rel.path}#{rel.query&.prepend('?')}"
-    if File.file?(localpath)
+    if !rel.host && !rel.path.start_with?("../") && File.file?(rel.path)
       return uri.route_to(abs)
     end
 
