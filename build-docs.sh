@@ -35,6 +35,7 @@ docker run --rm \
 
 rsync -rpt --delete \
       --exclude '_static/_templates/' \
+      --exclude '_static/**/*.{py,rst,fragment}' \
       --exclude '_sources/' \
       --exclude '.doctrees/' \
       --exclude '.buildinfo' \
