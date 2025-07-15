@@ -5,11 +5,16 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -u 1000 -m -s /bin/bash user
+
 WORKDIR /docs
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN chown -R user:user /docs
+USER user
 
 ENV SPHINXBUILD=sphinx-build
 
