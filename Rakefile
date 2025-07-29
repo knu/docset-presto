@@ -471,7 +471,20 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        if h = main.at('.//h2[contains(translate(., "P", "p"), " properties")]')
+        connector_name = main.xpath('//pre').find { |pre|
+          if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
+            break name
+          end
+        }
+        get_connector_name =
+          -> { connector_name or raise "#{path}: connector.name not found" }
+
+        [
+          *main.css("h2, h3").select { |h|
+            h.text.match?(/ (Properties|Authentication)/i)
+          },
+          *main.css('h2#configuration'),
+        ].each do |h|
           h.xpath('./following-sibling::*').each { |el|
             case el.name
             when 'h1', 'h2'
@@ -479,30 +492,26 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             when 'table'
               if el.at('.//th[translate(., "NP", "np") = "property name"]')
                 el.css('td:first-of-type .literal > .pre').each { |pre|
-                  index_item.(path, pre, 'Variable', pre.text)
+                  case var = pre.text
+                  when /\A([\w-]+)\./
+                    connector_name ||= $1
+                  end
+
+                  index_item.(path, pre, 'Variable', var)
                 }
               end
             end
           }
         end
 
-        connector_name = nil
-
         main.css('li .highlight-sql pre').each { |pre|
           if procedure = pre.text[/\A(?:CALL\s+)?\K[^(]+/]
             li = pre.at_xpath('(./ancestor::li)[1]') or next
-            index_item.(path, li, 'Procedure', procedure.sub(/\A<[^.>]+>(?=\.)/, connector_name))
+            index_item.(path, li, 'Procedure', procedure.sub(/\A<[^.>]+>(?=\.)/, get_connector_name.call))
           end
         }
 
         if h = main.at_css('h2#procedures')
-          connector_name ||=
-            main.xpath('//pre').find { |pre|
-              if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
-                break name
-              end
-            } or raise "#{path}: connector.name not found"
-
           el = h
           while el = el.next_element
             case el.name
@@ -511,7 +520,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             when 'ul'
               el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
                 if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
-                  index_item.(path, el, 'Procedure', "#{connector_name}.#{procedure}")
+                  index_item.(path, el, 'Procedure', "#{get_connector_name.call}.#{procedure}")
                 end
               end
             end
