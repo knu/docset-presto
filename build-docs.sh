@@ -8,6 +8,8 @@ else
     git clone https://github.com/prestodb/presto.git presto
 fi
 
+cat presto/presto-docs/requirements.txt requirements-additional.txt > requirements.txt
+
 version="${1:-current}"
 
 case "$version" in

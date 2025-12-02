@@ -1,6 +1,3 @@
-sphinx
-sphinx-immaterial
-sphinx-copybutton
 sphinx-autobuild
 docutils
 pygments
