@@ -504,11 +504,15 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           }
         end
 
-        main.css('li .highlight-sql pre').each { |pre|
-          if procedure = pre.text[/\A(?:CALL\s+)?\K[^(]+/]
-            li = pre.at_xpath('(./ancestor::li)[1]') or next
-            index_item.(path, li, 'Procedure', procedure.sub(/\A<[^.>]+>(?=\.)/, get_connector_name.call))
-          end
+        main.css('.highlight-sql pre').each { |pre|
+          li = pre.at_xpath('(./ancestor::li)[1]')
+          pattern = li ? /\A(?:CALL\s+)?\K[^(]+/ : /\ACALL\s+\K[^(]+/
+          next unless procedure = pre.text[pattern]
+
+          procedure = procedure.strip.sub(/\A<[^.>]+>(?=\.)/, get_connector_name.call)
+          next if has_item.('Procedure', procedure)
+
+          index_item.(path, li || pre.parent, 'Procedure', procedure)
         }
 
         if h = main.at_css('h2#procedures')
